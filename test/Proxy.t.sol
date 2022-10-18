@@ -15,18 +15,23 @@ contract ProxyTest is Test {
     function setUp() public {
         impl = address(new Counter());
 
-        bytes memory bc = vm.compile("huff/Proxy.huff");
-        bc = appendArg(bc, impl);
+        bytes memory bc = vm.compile("huff/Proxy.huff").appendArg(impl);
 
-        // Adds immutable address lmeow
+        // Changes the compiled offset of the bytecode so it
+        // includes the immutable variable
+        // AKA adds ONE 4byte/0x20/(32-bit) data to the end of the *deployed*
+        // contract address
+        // Hacky, but can't seem to find another way to do it
         // https://github.com/MathisGD/huff-immutable/blob/main/test/SimpleImmutable.t.sol
         bc[1] = bytes1(0x20 + uint8(bc[1]));
-        emit log_bytes(abi.encodePacked(bc[1]));
 
         proxy = create(bc, 0);
     }
 
     function testProxy() public {
-        emit log_bytes(address(proxy).code);
+        Counter(proxy).increment();
+
+        emit log_address(impl);
+        // emit log_bytes(address(proxy).code);
     }
 }

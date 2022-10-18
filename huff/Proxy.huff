@@ -2,26 +2,52 @@
 
 // Snippet from
 // https://github.com/jtriley-eth/minimum-viable-proxy/blob/main/huff/UUPSProxy.huff
-
-#define macro CONSTRUCTOR() = takes (0) returns (0) {
-    // Appends address as immutable variable
-}
-
 #define macro MAIN() = takes (0) returns (0) {
-//     // COPY CALLDATA TO MEMORY
-//     calldatasize        // [calldatasize]
+    // COPY CALLDATA TO MEMORY
+    calldatasize        // [calldatasize]
+    returndatasize      // [0, calldatasize]
+    returndatasize      // [0, 0, calldatasize]
+    calldatacopy        // []
 
-//     // Ahhh I'm gas golffffiiing
-//     // using returndatazie x2 is equilavent to 0x01 dup1
-//     // and somehow uses less opcodes... mfw
-//     returndatasize      // [zero, calldatasize]
-//     returndatasize      // [zero, zero, calldatasize]
-//     calldatacopy        // []
+    // Prepare DELEGATECALL stack
+    returndatasize      // [retsize]
+    returndatasize      // [retoffset, retsize]
+    calldatasize        // [argsize, retoffset, retsize]
+    returndatasize      // [argoffset, argsize, retoffset, retsize]
 
-//     // DELEGATECALL
-//     returndatasize      // [retsize]
-//     returndatasize      // [retoffset, retsize]
-//     calldatasize        // [argsize, retoffset, retsize]
-//     returndatasize      // [argoffset, argsize, retoffset, retsize]
-//     // ... TODO: React address from
+    // Extract address from immmutable variable
+    // https://ethereum.stackexchange.com/questions/132944/solidity-immutable-equivalent-in-huff
+    0x20                // [0x20, ...]
+    dup1                // [0x20, 0x20, ...]
+    codesize            // [codesize, 0x20, 0x20, ...]
+    sub                 // [codesize - 0x20, 0x20, ...]
+    0x20                // [0x20, codesize - 0x20, 0x20, ...]
+    codecopy            // [argoffset, argsize, retoffset, retsize]
+    0x20                // [0x20, argoffset, argsize, retoffset, retsize]
+    mload               // [impl_address, argoffset, argsize, retoffset, retsize]
+
+    // continue with delegate call
+    gas                 // [gas, impl_address, argoffset, argsize, retoffset, retsize]
+    delegatecall        // [success]
+
+    // copy returndata to memory
+    returndatasize      // [retsize, success]
+    0x00                // [retoffset, retsize, success]
+    dup1                // [memoffset, retoffset, retsize, success]
+    returndatacopy      // [success]
+
+    // return if success, else bubble up error
+    call_success        // [call_success (pc), success]
+    jumpi               // []
+
+    // failed
+    returndatasize      // [retsize]
+    0x00                // [retoffset, retsize]
+    revert              // []
+
+    // success
+    call_success:
+        returndatasize      // [retsize]
+        0x00                // [0x00, retsize]
+        return              // []
 }
