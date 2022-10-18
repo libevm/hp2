@@ -1,0 +1,27 @@
+// No SLOAD bitches
+
+// Snippet from
+// https://github.com/jtriley-eth/minimum-viable-proxy/blob/main/huff/UUPSProxy.huff
+
+#define macro CONSTRUCTOR() = takes (0) returns (0) {
+    // Appends address as immutable variable
+}
+
+#define macro MAIN() = takes (0) returns (0) {
+//     // COPY CALLDATA TO MEMORY
+//     calldatasize        // [calldatasize]
+
+//     // Ahhh I'm gas golffffiiing
+//     // using returndatazie x2 is equilavent to 0x01 dup1
+//     // and somehow uses less opcodes... mfw
+//     returndatasize      // [zero, calldatasize]
+//     returndatasize      // [zero, zero, calldatasize]
+//     calldatacopy        // []
+
+//     // DELEGATECALL
+//     returndatasize      // [retsize]
+//     returndatasize      // [retoffset, retsize]
+//     calldatasize        // [argsize, retoffset, retsize]
+//     returndatasize      // [argoffset, argsize, retoffset, retsize]
+//     // ... TODO: React address from
+}
