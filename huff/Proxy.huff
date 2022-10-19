@@ -75,9 +75,9 @@
     dup1                // [0x20, 0x20, ...]
     codesize            // [codesize, 0x20, 0x20, ...]
     sub                 // [codesize - 0x20, 0x20, ...]
-    0x20                // [0x20, codesize - 0x20, 0x20, ...]
+    calldatasize        // [calldatasize, codesize - 0x20, 0x20, ...]
     codecopy            // [argoffset, argsize, retoffset, retsize]
-    0x20                // [0x20, argoffset, argsize, retoffset, retsize]
+    calldatasize        // [calldatasize, argoffset, argsize, retoffset, retsize]
     mload               // [impl_address, argoffset, argsize, retoffset, retsize]
 
     // continue with delegate call
