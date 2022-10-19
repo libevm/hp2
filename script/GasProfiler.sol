@@ -38,7 +38,7 @@ contract GasProfiler is Script {
         console.log("Counter.increment gasProfiling");
         console.log("==============================");
 
-        console.log("Johns proxy gas used: ");
+        console.log("Jtriley's proxy gas used: ");
         console.log(johnGasUsed);
         console.log("====");
         console.log("HP2 proxy gas used: ");
