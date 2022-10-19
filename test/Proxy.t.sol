@@ -4,34 +4,37 @@ pragma solidity ^0.8.13;
 import "forge-std/Test.sol";
 import "../src/Counter.sol";
 import "../src/Deployer.sol";
+import "../src/IProxy.sol";
 
-using { compile } for Vm;
 using { create, appendArg } for bytes;
 
 contract ProxyTest is Test {
     address impl;
-    address proxy;
 
     function setUp() public {
         impl = address(new Counter());
-
-        bytes memory bc = vm.compile("huff/Proxy.huff").appendArg(impl);
-
-        // Changes the compiled offset of the bytecode so it
-        // includes the immutable variable
-        // AKA adds ONE 4byte/0x20/(32-bit) data to the end of the *deployed*
-        // contract address
-        // Hacky, but can't seem to find another way to do it
-        // https://github.com/MathisGD/huff-immutable/blob/main/test/SimpleImmutable.t.sol
-        bc[1] = bytes1(0x20 + uint8(bc[1]));
-
-        proxy = create(bc, 0);
     }
 
-    function testProxy() public {
+    function testProxyBasics() public {
+        address proxy = deployProxy(vm, impl, address(this));
+        uint256 _before = Counter(proxy).number();
         Counter(proxy).increment();
+        uint256 _after = Counter(proxy).number();
+        assertGt(_after, _before);
+        IProxy(proxy).destroy();
+    }
 
-        emit log_address(impl);
-        // emit log_bytes(address(proxy).code);
+    function testProxyOwnerDestroy() public {
+        address proxy = deployProxy(vm, impl, impl);
+
+        uint256 _before = Counter(proxy).number();
+        Counter(proxy).increment();
+        uint256 _after = Counter(proxy).number();
+        assertGt(_after, _before);
+
+        try IProxy(proxy).destroy() {
+            // We shouldn't be able to destroy the proxy
+            fail();
+        } catch {}
     }
 }

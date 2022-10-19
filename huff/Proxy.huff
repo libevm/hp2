@@ -1,8 +1,62 @@
-// No SLOAD bitches
+// No SLOAD when retrieving implementation bitches
 
 // Snippet from
 // https://github.com/jtriley-eth/minimum-viable-proxy/blob/main/huff/UUPSProxy.huff
+
+// uint256(keccak256("eip1967.proxy.admin"))
+#define constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6104
+
+// Destroy function
+#define function destroy() nonpayable returns ()
+
+#define macro CONSTRUCTOR() = takes (0) returns (0) {
+    // SSTORE admin
+
+    // Extract out address from constructor
+    0x20                // [0x20]
+    dup1                // [0x20, 0x20]
+    codesize            // [codesize, 0x20, 0x20]
+    sub                 // [admin_addr_offset, 0x20]
+    returndatasize      // [0x00, admin_addr_offset, 0x20]
+    codecopy            // []; copies admin address to memory
+
+    // Saves admin address into slot
+    returndatasize      // [0x00]
+    mload               // [admin_address]
+    [ADMIN_SLOT]        // [admin_slot, admin_address]
+    sstore              // sstore
+}
+
+// Suicide function, only callable by admin
+#define macro DESTROY() = takes (0) returns (0) {
+    [ADMIN_SLOT]        // [admin_slot]
+    sload               // [admin_address]
+    caller              // [msg.sender, admin_address]
+    eq                  // [is_authorized]
+    authorized          // [authorized (pc), is_authorized]
+    jumpi
+
+    // failed
+    returndatasize      // [retsize]
+    0x00                // [retoffset, retsize]
+    revert              // []
+
+    authorized:
+        caller          // [msg.sender]
+        selfdestruct    // []
+}
+
+
 #define macro MAIN() = takes (0) returns (0) {
+    // Identifies which function to call
+    0x00 calldataload           // [msg.data[:32]]
+    0xe0 shr                    // [msg.data[:4]]
+
+    dup1 __FUNC_SIG(destroy)    // [destroy_func_sig, msg.data[:4]]
+    eq                          // [is_equal]
+    destroy
+    jumpi
+
     // COPY CALLDATA TO MEMORY
     calldatasize        // [calldatasize]
     returndatasize      // [0, calldatasize]
@@ -50,4 +104,7 @@
         returndatasize      // [retsize]
         0x00                // [0x00, retsize]
         return              // []
+
+    destroy:
+        DESTROY()
 }
