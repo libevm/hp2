@@ -26,7 +26,6 @@
     [ADMIN_SLOT]        // [admin_slot, admin_address]
     sstore              // sstore
 }
-
 // Suicide function, only callable by admin
 #define macro DESTROY() = takes (0) returns (0) {
     [ADMIN_SLOT]        // [admin_slot]
@@ -49,10 +48,12 @@
 
 #define macro MAIN() = takes (0) returns (0) {
     // Identifies which function to call
-    0x00 calldataload           // [msg.data[:32]]
+    msize
+    msize calldataload           // [msg.data[:32]]
     0xe0 shr                    // [msg.data[:4]]
 
-    dup1 __FUNC_SIG(destroy)    // [destroy_func_sig, msg.data[:4]]
+    // dup1 
+    __FUNC_SIG(destroy)    // [destroy_func_sig, msg.data[:4]]
     eq                          // [is_equal]
     destroy
     jumpi
@@ -71,7 +72,7 @@
 
     // Extract address from immmutable variable
     // https://ethereum.stackexchange.com/questions/132944/solidity-immutable-equivalent-in-huff
-    0x20                // [0x20, ...]
+    msize                // [0x20, ...]
     dup1                // [0x20, 0x20, ...]
     codesize            // [codesize, 0x20, 0x20, ...]
     sub                 // [codesize - 0x20, 0x20, ...]
@@ -86,7 +87,7 @@
 
     // copy returndata to memory
     returndatasize      // [retsize, success]
-    0x00                // [retoffset, retsize, success]
+    dup3                // [retoffset, retsize, success]
     dup1                // [memoffset, retoffset, retsize, success]
     returndatacopy      // [success]
 
@@ -96,13 +97,13 @@
 
     // failed
     returndatasize      // [retsize]
-    0x00                // [retoffset, retsize]
+    dup2                // [retoffset, retsize]
     revert              // []
 
     // success
     call_success:
         returndatasize      // [retsize]
-        0x00                // [0x00, retsize]
+        dup2                // [0x00, retsize]
         return              // []
 
     destroy:
