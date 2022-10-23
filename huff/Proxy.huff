@@ -26,7 +26,6 @@
     [ADMIN_SLOT]        // [admin_slot, admin_address]
     sstore              // sstore
 }
-
 // Suicide function, only callable by admin
 #define macro DESTROY() = takes (0) returns (0) {
     [ADMIN_SLOT]        // [admin_slot]
@@ -46,63 +45,64 @@
         selfdestruct    // []
 }
 
-
+#define jumptable DUMMY_TABLE {}
 #define macro MAIN() = takes (0) returns (0) {
     // Identifies which function to call
-    0x00 calldataload           // [msg.data[:32]]
-    0xe0 shr                    // [msg.data[:4]]
+    msize
+    msize calldataload           // [msg.data[:32],0]
+    0xe0 shr                    // [msg.data[:4],0]
 
-    dup1 __FUNC_SIG(destroy)    // [destroy_func_sig, msg.data[:4]]
-    eq                          // [is_equal]
+    // dup1 
+    __FUNC_SIG(destroy)    // [destroy_func_sig, msg.data[:4],0]
+    eq                          // [is_equal,0]
     destroy
     jumpi
 
     // COPY CALLDATA TO MEMORY
-    calldatasize        // [calldatasize]
-    returndatasize      // [0, calldatasize]
-    returndatasize      // [0, 0, calldatasize]
+    calldatasize        // [calldatasize,0]
+    returndatasize      // [0, calldatasize,0]
+    returndatasize      // [0, 0, calldatasize,0]
     calldatacopy        // []
 
     // Prepare DELEGATECALL stack
-    returndatasize      // [retsize]
-    returndatasize      // [retoffset, retsize]
-    calldatasize        // [argsize, retoffset, retsize]
-    returndatasize      // [argoffset, argsize, retoffset, retsize]
+    returndatasize      // [retsize,0]
+    returndatasize      // [retoffset, retsize,0]
+    calldatasize        // [argsize, retoffset, retsize,0]
+    returndatasize      // [argoffset, argsize, retoffset, retsize,0]
 
     // Extract address from immmutable variable
     // https://ethereum.stackexchange.com/questions/132944/solidity-immutable-equivalent-in-huff
-    0x20                // [0x20, ...]
-    dup1                // [0x20, 0x20, ...]
-    codesize            // [codesize, 0x20, 0x20, ...]
-    sub                 // [codesize - 0x20, 0x20, ...]
-    calldatasize        // [calldatasize, codesize - 0x20, 0x20, ...]
-    codecopy            // [argoffset, argsize, retoffset, retsize]
-    calldatasize        // [calldatasize, argoffset, argsize, retoffset, retsize]
-    mload               // [impl_address, argoffset, argsize, retoffset, retsize]
+    msize                // [0x20, ...]
+    // https://docs.huff.sh/get-started/huff-by-example/#jump-tables
+    __tablestart(DUMMY_TABLE) // [constructor_args_offset, 0x20, ...]
+    calldatasize        // [calldatasize, constructor_args_offset, 0x20, ...]
+    codecopy            // [argoffset, argsize, retoffset, retsize,0]
+    calldatasize        // [calldatasize, argoffset, argsize, retoffset, retsize,0]
+    mload               // [impl_address, argoffset, argsize, retoffset, retsize,0]
 
     // continue with delegate call
-    gas                 // [gas, impl_address, argoffset, argsize, retoffset, retsize]
-    delegatecall        // [success]
+    gas                 // [gas, impl_address, argoffset, argsize, retoffset, retsize,0]
+    delegatecall        // [success,0]
 
     // copy returndata to memory
-    returndatasize      // [retsize, success]
-    0x00                // [retoffset, retsize, success]
-    dup1                // [memoffset, retoffset, retsize, success]
-    returndatacopy      // [success]
+    returndatasize      // [retsize, success,0]
+    dup3                // [retoffset, retsize, success,0]
+    dup1                // [memoffset, retoffset, retsize, success,0]
+    returndatacopy      // [success,0]
 
     // return if success, else bubble up error
-    call_success        // [call_success (pc), success]
+    call_success        // [call_success (pc), success,0]
     jumpi               // []
 
     // failed
-    returndatasize      // [retsize]
-    0x00                // [retoffset, retsize]
+    returndatasize      // [retsize,0]
+    dup2                // [retoffset, retsize,0]
     revert              // []
 
     // success
     call_success:
-        returndatasize      // [retsize]
-        0x00                // [0x00, retsize]
+        returndatasize      // [retsize,0]
+        dup2                // [0x00, retsize,0]
         return              // []
 
     destroy:
